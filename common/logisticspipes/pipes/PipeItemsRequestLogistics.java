@@ -16,7 +16,9 @@ import javax.annotation.Nullable;
 
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
+import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.text.TextComponentString;
+import net.minecraft.util.ResourceLocation;
 
 import logisticspipes.LogisticsPipes;
 import logisticspipes.interfaces.routing.IRequestItems;
@@ -87,34 +89,27 @@ public class PipeItemsRequestLogistics extends CoreRoutedPipe implements IReques
 		return ItemSendMode.Normal;
 	}
 
-	@CCCommand(description = "Requests the given ItemIdentifierStack")
-	@CCQueued
-	public Object[] makeRequest(ItemIdentifierStack stack) throws Exception {
-		return makeRequest(stack.getItem(), Double.valueOf(stack.getStackSize()), false);
-	}
-
-	@CCCommand(description = "Requests the given ItemIdentifierStack")
-	@CCQueued
-	public Object[] makeRequest(ItemIdentifierStack stack, Boolean forceCrafting) throws Exception {
-		return makeRequest(stack.getItem(), Double.valueOf(stack.getStackSize()), forceCrafting);
-	}
-
 	@CCCommand(description = "Requests the given ItemIdentifier with the given amount")
 	@CCQueued
-	public Object[] makeRequest(ItemIdentifier item, Double amount) throws Exception {
+	public Object[] makeRequest(Map<String, Object> item, Double amount) throws Exception {
 		return makeRequest(item, amount, false);
 	}
 
 	@CCCommand(description = "Requests the given ItemIdentifier with the given amount")
 	@CCQueued
-	public Object[] makeRequest(ItemIdentifier item, Double amount, Boolean forceCrafting) throws Exception {
+	public Object[] makeRequest(Map<String, Object> item, Double amount, Boolean forceCrafting) throws Exception {
 		if (forceCrafting == null) {
 			forceCrafting = false;
 		}
 		if (item == null) {
 			throw new Exception("Invalid ItemIdentifier");
 		}
-		return RequestHandler.computerRequest(item.makeStack((int) Math.floor(amount)), this, forceCrafting);
+		//Item item, int itemUndamagableDamage, NBTTagCompound tag
+		int dmg = 0;
+		if(item.containsKey("damage")) {
+			dmg = ((Double)item.get("damage")).intValue();
+		}
+		return RequestHandler.computerRequest(ItemIdentifier.get(Item.REGISTRY.getObject(new ResourceLocation((String)item.get("item"))), dmg, null).makeStack((int) Math.floor(amount)), this, forceCrafting);
 	}
 
 	@CCCommand(description = "Asks for all available ItemIdentifier inside the Logistics Network")
@@ -137,13 +132,18 @@ public class PipeItemsRequestLogistics extends CoreRoutedPipe implements IReques
 
 	@CCCommand(description = "Asks for the amount of an ItemIdentifier Id inside the Logistics Network")
 	@CCQueued
-	public int getItemAmount(ItemIdentifier item) throws Exception {
+	public int getItemAmount(Map<String, Object> item) throws Exception {
 		Map<ItemIdentifier, Integer> items = SimpleServiceLocator.logisticsManager.getAvailableItems(getRouter().getIRoutersByCost());
-		if (item == null) {
+		int dmg = 0;
+		if(item.containsKey("damage")) {
+			dmg = ((Double)item.get("damage")).intValue();
+		}
+		ItemIdentifier itemID = ItemIdentifier.get(Item.REGISTRY.getObject(new ResourceLocation((String)item.get("item"))), dmg, null);
+		if (itemID == null) {
 			throw new Exception("Invalid ItemIdentifierID");
 		}
-		if (items.containsKey(item)) {
-			return items.get(item);
+		if (items.containsKey(itemID)) {
+			return items.get(itemID);
 		}
 		return 0;
 	}
